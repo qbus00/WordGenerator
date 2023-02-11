@@ -45,7 +45,7 @@ await using (var fileStream = File.CreateText(parseResult.Value.Filename))
 }
 
 timer.Stop();
-Console.WriteLine($"Done. Generating of file took {timer.Elapsed.Seconds} seconds.");
+Console.WriteLine($"Done. Generating of file took {timer.Elapsed.TotalSeconds} seconds.");
 
 return 0;
 
