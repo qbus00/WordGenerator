@@ -1,26 +1,40 @@
-﻿
-using System.Diagnostics;
+﻿using CommandLine;
+using ShellProgressBar;
 using WordSorter;
 using WordSorter.ExternalMerge;
 
+var parseResult = Parser.Default.ParseArguments<CommandLineOptions>(args);
+if (parseResult.Errors.Any())
+{
+    return 0;
+}
+
+var disablePercentageOption = new ProgressBarOptions { DisableBottomPercentage = true };
+var enablePercentageOption = new ProgressBarOptions { DisableBottomPercentage = false };
+
+using var progressBar = new ProgressBar(10_000, "Sorting data using K-Way merge external sort.", disablePercentageOption);
+var merge = progressBar.Spawn(10_000, "3. Merging temporary files using K-Way merge", enablePercentageOption);
+var sort = progressBar.Spawn(10_000, "2. Sorting data in files", enablePercentageOption);
+var split = progressBar.Spawn(10_000, "1. Splitting files", enablePercentageOption);
 var externalMergeSorter = new ExternalMergeSorter(new ExternalMergeSorterOptions
 {
-    Sort = new ExternalMergeSortSortOptions
-    {
-        Comparer = new CustomComparer()
-    },
     Split = new ExternalMergeSortSplitOptions
     {
-        FileSize = 512 * 1024 * 1024
+        ProgressHandler = split.AsProgress<double>(),
+        FileSize = parseResult.Value.SizeOfTemporaryFiles * 1024L * 1024L
+    },
+    Sort = new ExternalMergeSortSortOptions
+    {
+        ProgressHandler = sort.AsProgress<double>(),
+        MaxNumberOfThreads = parseResult.Value.NumberOfThreads,
+        Comparer = new CustomComparer()
+    },
+    Merge = new ExternalMergeSortMergeOptions
+    {
+        FilesPerRun = parseResult.Value.FilesPerRun,
+        MaxNumberOfThreads = parseResult.Value.NumberOfThreads,
+        ProgressHandler = merge.AsProgress<double>(),
     }
 });
-
-var timer = new Stopwatch();
-
-Console.WriteLine("Sorting...");
-timer.Start();
-await using var fileStream = File.Open("data.txt", FileMode.Open);
-await using var output = File.Create("output.txt");
-await externalMergeSorter.Sort(fileStream, output, default);
-timer.Stop();
-Console.WriteLine($"Done. Sorting of file took {timer.Elapsed.TotalSeconds} seconds.");
+await externalMergeSorter.Sort(parseResult.Value.InputFilename, parseResult.Value.OutputFilename, default);
+return 0;
