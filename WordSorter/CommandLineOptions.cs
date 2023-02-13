@@ -54,15 +54,15 @@ public class CommandLineOptions
         }
     }
 
-    private int _filesPerRun;
+    private int _chunkFilesStep;
 
-    [Option('f', "_filesPerRun",
+    [Option('c', "chunkFilesStep",
         Required = false,
         Default = 4,
-        HelpText = "Number of files to use at one pass in K-Way merge.")]
-    public int FilesPerRun
+        HelpText = "Number of chunks that should be used to split current list of files in K-Way merge.")]
+    public int ChunkFilesStep
     {
-        get => _filesPerRun;
+        get => _chunkFilesStep;
         set
         {
             if (value is > 1024 or < 1)
@@ -70,7 +70,7 @@ public class CommandLineOptions
                 throw new InvalidDataException("Must be larger then 0 and smaller then 1024.");
             }
 
-            _filesPerRun = value;
+            _chunkFilesStep = value;
         }
     }
 }

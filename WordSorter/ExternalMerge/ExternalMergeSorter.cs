@@ -40,7 +40,7 @@ public class ExternalMergeSorter
         var sortedFiles = await SortFiles(files);
 
         var done = false;
-        var size = _options.Merge.FilesPerRun;
+        var size = _options.Merge.ChunkFilesStep;
         _totalFilesToMerge = sortedFiles.Count;
         var result = sortedFiles.Count / size;
 
@@ -188,9 +188,7 @@ public class ExternalMergeSorter
         var done = false;
         while (!done)
         {
-            var runSize = _options.Merge.FilesPerRun;
-            var finalRun = sortedFiles.Count <= runSize;
-
+            var finalRun = sortedFiles.Count <= _options.Merge.ChunkFilesStep;
             if (finalRun)
             {
                 await Merge(sortedFiles, target, cancellationToken);
@@ -198,9 +196,8 @@ public class ExternalMergeSorter
                 return;
             }
 
-            var runs = sortedFiles.Chunk(runSize);
+            var runs = sortedFiles.Chunk(_options.Merge.ChunkFilesStep);
             var chunkCounter = 0;
-
             foreach (var files in runs)
             {
                 var outputFilename = $"{++chunkCounter}{SortedFileExtension}{TempFileExtension}";

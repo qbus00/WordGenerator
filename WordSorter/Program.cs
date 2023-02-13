@@ -31,7 +31,7 @@ var externalMergeSorter = new ExternalMergeSorter(new ExternalMergeSorterOptions
     },
     Merge = new ExternalMergeSortMergeOptions
     {
-        FilesPerRun = parseResult.Value.FilesPerRun,
+        ChunkFilesStep = parseResult.Value.ChunkFilesStep,
         MaxNumberOfThreads = parseResult.Value.NumberOfThreads,
         ProgressHandler = merge.AsProgress<double>(),
     }
