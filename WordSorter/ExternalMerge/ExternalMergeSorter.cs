@@ -25,7 +25,7 @@ public class ExternalMergeSorter
     {
         var inputFileInfo = new FileInfo(inputFilename);
         await using var output = File.Create(outputFilename);
-        if (inputFileInfo.Length < _options.Split.FileSize)
+        if (inputFileInfo.Length <= _options.Split.FileSize)
         {
             _options.Split.ProgressHandler?.Report(1);
             await SortSingleFile(inputFilename, output);

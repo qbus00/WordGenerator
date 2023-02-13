@@ -1,8 +1,8 @@
-using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
 using CommandLine;
+using ShellProgressBar;
 using WordGenerator;
 
 const int numberOfBytesInGigabyte = 1_073_741_824;
@@ -13,11 +13,7 @@ if (parseResult.Errors.Any())
     return 0;
 }
 
-await Console.Out.WriteLineAsync("Generating...");
-var timer = new Stopwatch();
-
-timer.Start();
-
+using var progressBar = new ProgressBar(10_000, "Generating file with random data.");
 var englishWords = await GetEnglishWordsFromFile();
 var sizeOfFileInBytes = (long)parseResult.Value.SizeOfFileInGb * numberOfBytesInGigabyte;
 var random = new Random();
@@ -27,25 +23,21 @@ var maximumRandomNumberToGenerate = parseResult.Value.MaximumRandomNumberToGener
 var sentenceSize = parseResult.Value.MaximumNumberOfWordsInSentence;
 var generatedSentences = new List<string>(generatedSentencesMaximumSize);
 
-await using (var fileStream = File.CreateText(parseResult.Value.Filename))
+await using var fileStream = File.CreateText(parseResult.Value.Filename);
+while (fileStream.BaseStream.Length < sizeOfFileInBytes)
 {
-    while (fileStream.BaseStream.Length < sizeOfFileInBytes)
-    {
-        var number = random.Next(0, maximumRandomNumberToGenerate + 1);
-        var sentence = generatedSentences.Count == generatedSentencesMaximumSize && generatedSentencesMaximumSize > 0
-            ? generatedSentences[random.Next(0, generatedSentencesMaximumSize)]
-            : GenerateSentence();
+    var number = random.Next(0, maximumRandomNumberToGenerate + 1);
+    var sentence = generatedSentences.Count == generatedSentencesMaximumSize && generatedSentencesMaximumSize > 0
+        ? generatedSentences[random.Next(0, generatedSentencesMaximumSize)]
+        : GenerateSentence();
 
-        var line = number.ToString(CultureInfo.InvariantCulture) + ". " + sentence;
-        await fileStream.WriteLineAsync(line);
-    }
-
-    await fileStream.FlushAsync();
-    fileStream.Close();
+    var line = number.ToString(CultureInfo.InvariantCulture) + ". " + sentence;
+    await fileStream.WriteLineAsync(line);
+    progressBar.AsProgress<double>().Report(fileStream.BaseStream.Length / (double)sizeOfFileInBytes);
 }
 
-timer.Stop();
-Console.WriteLine($"Done. Generating of file took {timer.Elapsed.TotalSeconds} seconds.");
+await fileStream.FlushAsync();
+fileStream.Close();
 
 return 0;
 
@@ -54,7 +46,7 @@ async Task<string[]> GetEnglishWordsFromFile()
     var assembly = Assembly.GetExecutingAssembly();
     var englishWordsFileResourceName = "WordGenerator.Resources.words_alpha.txt";
     await using var stream = assembly.GetManifestResourceStream(englishWordsFileResourceName);
-    using var reader = new StreamReader(stream);
+    using var reader = new StreamReader(stream!);
     var strings = (await reader.ReadToEndAsync()).Split(new[] { "\r\n" }, StringSplitOptions.None);
     return strings;
 }

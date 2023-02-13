@@ -28,7 +28,7 @@ public class CommandLineOptions
 
     [Option('m', "maximumNumberOfSentences",
         Required = false,
-        Default = 1000,
+        Default = 10000,
         HelpText = "Maximum number of sentences to generate (0 = no limit). Maximum is 1 000 000.")]
     public int MaximumNumberSentences
     {
