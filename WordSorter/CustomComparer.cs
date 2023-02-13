@@ -28,8 +28,8 @@ public class CustomComparer : IComparer<string>
             return compareResult;
         }
 
-        var success1 = IntParseFast(GetColumnValue(x, 1), out var number1);
-        var success2 = IntParseFast(GetColumnValue(y, 1), out var number2);
+        var success1 = FastParseToInt(GetColumnValue(x, 1), out var number1);
+        var success2 = FastParseToInt(GetColumnValue(y, 1), out var number2);
         if (!success1 || !success2)
         {
             return compareResult;
@@ -87,7 +87,7 @@ public class CustomComparer : IComparer<string>
         return span.Slice(columnStartIndex, columnLength);
     }
 
-    private static bool IntParseFast(ReadOnlySpan<char> s, out int result)
+    private static bool FastParseToInt(ReadOnlySpan<char> s, out int result)
     {
         var value = 0;
         var length = s.Length;
