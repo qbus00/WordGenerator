@@ -53,24 +53,4 @@ public class CommandLineOptions
             _sizeOfTemporaryFiles = value;
         }
     }
-
-    private int _chunkFilesStep;
-
-    [Option('c', "chunkFilesStep",
-        Required = false,
-        Default = 4,
-        HelpText = "Number of chunks that should be used to split current list of files in K-Way merge.")]
-    public int ChunkFilesStep
-    {
-        get => _chunkFilesStep;
-        set
-        {
-            if (value is > 1024 or < 1)
-            {
-                throw new InvalidDataException("Must be larger then 0 and smaller then 1024.");
-            }
-
-            _chunkFilesStep = value;
-        }
-    }
 }

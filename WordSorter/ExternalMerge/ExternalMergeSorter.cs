@@ -2,17 +2,14 @@ namespace WordSorter.ExternalMerge;
 
 public class ExternalMergeSorter
 {
+    private int _filesToTakeAtOnce;
     private long _maxUnsortedRows;
-    private double _totalFilesToMerge;
+    private int _totalFilesToMerge;
     private int _mergeFilesProcessed;
+    private string _outputFilename;
     private readonly ExternalMergeSorterOptions _options;
     private const string UnsortedFileExtension = ".unsorted";
     private const string SortedFileExtension = ".sorted";
-    private const string TempFileExtension = ".tmp";
-
-    public ExternalMergeSorter() : this(new ExternalMergeSorterOptions())
-    {
-    }
 
     public ExternalMergeSorter(ExternalMergeSorterOptions options)
     {
@@ -23,8 +20,10 @@ public class ExternalMergeSorter
 
     public async Task Sort(string inputFilename, string outputFilename, CancellationToken cancellationToken)
     {
+        _outputFilename = outputFilename;
+        _filesToTakeAtOnce = _options.Sort.MaxNumberOfThreads;
         var inputFileInfo = new FileInfo(inputFilename);
-        await using var output = File.Create(outputFilename);
+        await using var output = File.Create(_outputFilename);
         if (inputFileInfo.Length <= _options.Split.FileSize)
         {
             _options.Split.ProgressHandler?.Report(1);
@@ -36,11 +35,26 @@ public class ExternalMergeSorter
 
         await using var input = File.Open(inputFilename, FileMode.Open);
         var files = await SplitFile(input, cancellationToken);
-
         var sortedFiles = await SortFiles(files);
 
+        CalculateTotalFilesToMerge(sortedFiles);
+
+        await MergeFiles(sortedFiles, output, cancellationToken);
+        foreach (var sFile in Directory.GetFiles(".", "*.unsorted"))
+        {
+            File.Delete(sFile);
+        }
+
+        foreach (var sFile in Directory.GetFiles(".", "*.sorted"))
+        {
+            File.Delete(sFile);
+        }
+    }
+
+    private void CalculateTotalFilesToMerge(IReadOnlyList<string> sortedFiles)
+    {
         var done = false;
-        var size = _options.Merge.ChunkFilesStep;
+        var size = _filesToTakeAtOnce;
         _totalFilesToMerge = sortedFiles.Count;
         var result = sortedFiles.Count / size;
 
@@ -54,8 +68,6 @@ public class ExternalMergeSorter
             _totalFilesToMerge += result;
             result /= size;
         }
-
-        await MergeFiles(sortedFiles, output, cancellationToken);
     }
 
     private async Task<IReadOnlyCollection<string>> SplitFile(Stream sourceStream, CancellationToken cancellationToken)
@@ -122,6 +134,7 @@ public class ExternalMergeSorter
                 filenames.Add(filename);
                 extraBuffer.Clear();
             }
+
             _options.Split.ProgressHandler?.Report(1);
             return filenames;
         }
@@ -185,50 +198,61 @@ public class ExternalMergeSorter
 
     private async Task MergeFiles(IReadOnlyList<string> sortedFiles, Stream target, CancellationToken cancellationToken)
     {
-        var done = false;
-        while (!done)
-        {
-            var finalRun = sortedFiles.Count <= _options.Merge.ChunkFilesStep;
-            if (finalRun)
+            while (true)
             {
-                await Merge(sortedFiles, target, cancellationToken);
-                _options.Merge.ProgressHandler?.Report(1);
-                return;
-            }
-
-            var runs = sortedFiles.Chunk(_options.Merge.ChunkFilesStep);
-            var chunkCounter = 0;
-            foreach (var files in runs)
-            {
-                var outputFilename = $"{++chunkCounter}{SortedFileExtension}{TempFileExtension}";
-                if (files.Length == 1)
+                var finalRun = sortedFiles.Count <= 2;
+                if (finalRun)
                 {
-                    OverwriteTempFile(files.First(), outputFilename);
-                    continue;
+                    await Merge(sortedFiles, target, cancellationToken);
+                    foreach (var file in sortedFiles)
+                    {
+                        FastFileDelete(file);
+                    }
+
+                    _options.Merge.ProgressHandler?.Report(1);
+                    return;
                 }
 
-                var outputStream = File.OpenWrite(outputFilename);
-                await Merge(files, outputStream, cancellationToken);
-                OverwriteTempFile(outputFilename, outputFilename);
-
-                void OverwriteTempFile(string from, string to)
+                var runs = sortedFiles.Chunk(_filesToTakeAtOnce).ToArray();
+                var chunkCounter = 0;
+                var guid = Guid.NewGuid().ToString();
+                await runs.ForEachAsync(_filesToTakeAtOnce, async files =>
                 {
-                    File.Move(from, to.Replace(TempFileExtension, string.Empty), true);
+                    var outputFilename = $"{Interlocked.Increment(ref chunkCounter)}_{guid}{SortedFileExtension}";
+                    if (files.Length == 1)
+                    {
+                        File.Move(files.First(), outputFilename, true);
+                    }
+                    else
+                    {
+                        var outputStream = File.OpenWrite(outputFilename);
+                        await Merge(files, outputStream, cancellationToken);
+
+                    }
+                });
+
+                foreach (var file in sortedFiles)
+                {
+                    FastFileDelete(file);
+                }
+
+                _mergeFilesProcessed += sortedFiles.Count;
+                sortedFiles = Directory.GetFiles(".", $"*_{guid}{SortedFileExtension}")
+                    .OrderBy(x =>
+                    {
+                        var filename = Path.GetFileNameWithoutExtension(x).Replace($"_{guid}", string.Empty);
+                        return int.Parse(filename);
+                    }).ToArray();
+
+                var progress = _mergeFilesProcessed / (double)_totalFilesToMerge;
+                _options.Merge.ProgressHandler?.Report(progress);
+
+                if (sortedFiles.Count == 1)
+                {
+                    File.Move(sortedFiles.First(), _outputFilename, true);
+                    return;
                 }
             }
-
-            sortedFiles = Directory.GetFiles(".", $"*{SortedFileExtension}")
-                .OrderBy(x =>
-                {
-                    var filename = Path.GetFileNameWithoutExtension(x);
-                    return int.Parse(filename);
-                }).ToArray();
-
-            if (sortedFiles.Count <= 1)
-            {
-                done = true;
-            }
-        }
     }
 
     private async Task Merge(IReadOnlyList<string> filesToMerge, Stream outputStream, CancellationToken cancellationToken)
@@ -251,7 +275,6 @@ public class ExternalMergeSorter
                 rows.RemoveAt(indexToRemove);
                 finishedStreamReaders.Add(streamReaderIndex);
                 done = finishedStreamReaders.Count == streamReaders.Length;
-                _options.Merge.ProgressHandler?.Report(++_mergeFilesProcessed / _totalFilesToMerge);
                 continue;
             }
 
@@ -259,7 +282,10 @@ public class ExternalMergeSorter
             rows[0] = new RowStreamValue { Value = value!, StreamReader = streamReaderIndex };
         }
 
-        CleanupRun(streamReaders, filesToMerge);
+        foreach (var st in streamReaders)
+        {
+            st.Dispose();
+        }
     }
 
     private async Task<(StreamReader[] StreamReaders, List<RowStreamValue> rows)> InitializeStreamReaders(IReadOnlyList<string> sortedFiles)
@@ -282,14 +308,15 @@ public class ExternalMergeSorter
         return (streamReaders, rows);
     }
 
-    private static void CleanupRun(IReadOnlyList<StreamReader> streamReaders, IReadOnlyList<string> filesToMerge)
+    private static void FastFileDelete(string filename)
     {
-        for (var i = 0; i < streamReaders.Count; i++)
+        if (!File.Exists(filename))
         {
-            streamReaders[i].Dispose();
-            var temporaryFilename = $"{filesToMerge[i]}.removal";
-            File.Move(filesToMerge[i], temporaryFilename);
-            File.Delete(temporaryFilename);
+            return;
         }
+
+        var temporaryFilename = $"{filename}.removal";
+        File.Move(filename, temporaryFilename);
+        File.Delete(temporaryFilename);
     }
 }

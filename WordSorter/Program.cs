@@ -16,6 +16,7 @@ using var progressBar = new ProgressBar(10_000, "Sorting data using K-Way merge 
 var merge = progressBar.Spawn(10_000, "3. Merging temporary files using K-Way merge", enablePercentageOption);
 var sort = progressBar.Spawn(10_000, "2. Sorting data in files", enablePercentageOption);
 var split = progressBar.Spawn(10_000, "1. Splitting files", enablePercentageOption);
+
 var externalMergeSorter = new ExternalMergeSorter(new ExternalMergeSorterOptions
 {
     Split = new ExternalMergeSortSplitOptions
@@ -31,7 +32,6 @@ var externalMergeSorter = new ExternalMergeSorter(new ExternalMergeSorterOptions
     },
     Merge = new ExternalMergeSortMergeOptions
     {
-        ChunkFilesStep = parseResult.Value.ChunkFilesStep,
         MaxNumberOfThreads = parseResult.Value.NumberOfThreads,
         ProgressHandler = merge.AsProgress<double>(),
     }

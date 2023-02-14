@@ -32,7 +32,6 @@ namespace WordSorter.ExternalMerge
     public class ExternalMergeSortMergeOptions
     {
         public int MaxNumberOfThreads { get; init; }
-        public int ChunkFilesStep { get; init; } = 4;
         public int InputBufferSize { get; init; } = 65536;
         public int OutputBufferSize { get; init; } = 65536;
         public IProgress<double> ProgressHandler { get; init; } = null!;
