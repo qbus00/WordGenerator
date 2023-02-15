@@ -7,7 +7,7 @@ Solution written as a task for interview.
 This tool is used to generate files according to specification provided in description of task.
 
 External libraries/tools used in project:
-1. List of English words (https://github.com/dwyl/english-words) used as a source of words to generate
+1. List of English words (https://github.com/dwyl/english-words) used as a source of words
 2. CommandLineParser library (https://github.com/commandlineparser/commandline) for parsing and storing command line arguments
 3. ShellProgressBar (https://github.com/Mpdreamz/shellprogressbar) to visualize progress of creating file
 
