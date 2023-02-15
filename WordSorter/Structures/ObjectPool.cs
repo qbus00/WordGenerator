@@ -1,4 +1,4 @@
-namespace WordSorter;
+namespace WordSorter.Structures;
 
 public class ArraysPool<T>
 {

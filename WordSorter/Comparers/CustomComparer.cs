@@ -1,4 +1,4 @@
-namespace WordSorter;
+namespace WordSorter.Comparers;
 
 public class CustomComparer : IComparer<string>
 {

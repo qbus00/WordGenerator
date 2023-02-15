@@ -1,3 +1,6 @@
+using WordSorter.Extensions;
+using WordSorter.Structures;
+
 namespace WordSorter.ExternalMerge;
 
 public class ExternalMergeSorter

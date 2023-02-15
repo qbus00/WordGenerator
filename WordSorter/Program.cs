@@ -1,6 +1,7 @@
 ﻿using CommandLine;
 using ShellProgressBar;
 using WordSorter;
+using WordSorter.Comparers;
 using WordSorter.ExternalMerge;
 
 var parseResult = Parser.Default.ParseArguments<CommandLineOptions>(args);

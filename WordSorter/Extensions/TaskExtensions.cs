@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace WordSorter;
+namespace WordSorter.Extensions;
 
 public static class TaskExtensions
 {
