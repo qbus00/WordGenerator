@@ -26,6 +26,6 @@ Webpages that was a great help when creating this solution:
 
 External libraries/tools used in project:
 1. CommandLineParser library (https://github.com/commandlineparser/commandline) for parsing and storing command line arguments
-2. ShellProgressBar (https://github.com/Mpdreamz/shellprogressbar) to visualize progress of creating file
+2. ShellProgressBar (https://github.com/Mpdreamz/shellprogressbar) to visualize progress of sorting
 
 Description of command line parameters used in the application is available after starting executable without any parameters.
