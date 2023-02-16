@@ -19,7 +19,7 @@ This is the main tool of this solution. It takes unsorted files (e.g. the ones g
 
 As the requirement is to be able to handle very large files (e.g. 100GB), application uses K-Way Merge External Sort https://en.wikipedia.org/wiki/K-way_merge_algorithm) algorithm.
 
-Webpages that was a great help when creating this solution:
+Webpages that were a great help when creating this solution:
 * https://josef.codes/sorting-really-large-files-with-c-sharp/ - explanation and sample solution with code in C# for K-Way Merge
 * https://josef.codes/sorting-large-csv-files-by-column-using-csharp/ - idea how to sort rows by given criteria and how to effectively split strings using memory span to reuse original string when comparing data
 * https://mdfarragher.medium.com/c-developers-are-you-tired-of-slow-string-parsing-code-e955b3b3248 - idea how to convert known strings to integers in a very fast way
